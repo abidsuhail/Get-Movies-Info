@@ -32,8 +32,6 @@ public class VideosTrailersListAdapter extends RecyclerView.Adapter<VideosTraile
     private VideoThumbnailListLayoutBinding videoThumbnailListLayoutBinding;
     public static final String YOUTUBE_API_KEY= BuildConfig.YOUTUBE_API_KEY;
 
-    private static final String TAG = "VideosTrailersListAdapt";
-
     public VideosTrailersListAdapter(Context context) {
         this.context = context;
     }
@@ -49,41 +47,48 @@ public class VideosTrailersListAdapter extends RecyclerView.Adapter<VideosTraile
 
         videoThumbnailListLayoutBinding = DataBindingUtil.inflate(LayoutInflater
                 .from(parent.getContext()),R.layout.video_thumbnail_list_layout,parent,false);
-        return new ViewHolder(videoThumbnailListLayoutBinding);
+        return new ViewHolder(videoThumbnailListLayoutBinding, true);
     }
 
 
     @Override
     public void onBindViewHolder(@NonNull final ViewHolder holder, int position) {
         final VideoResult trailerVideo=videoResultList.get(position);
-
         videoThumbnailListLayoutBinding.setVideo(trailerVideo);
+        if (holder.readyForLoadingYoutubeThumbnail) {
+            holder.readyForLoadingYoutubeThumbnail = false;
+            holder.videoThumbnailListLayoutBinding
+                    .youtubeThumbnailView
+                    .initialize(YOUTUBE_API_KEY, new YouTubeThumbnailView.OnInitializedListener() {
+                        @Override
+                        public void onInitializationSuccess(YouTubeThumbnailView youTubeThumbnailView, final YouTubeThumbnailLoader youTubeThumbnailLoader) {
+                            //setting trailer video key
+                            youTubeThumbnailLoader.setVideo(trailerVideo.getKey());
+                            //getting trailer thumbnail
+                            youTubeThumbnailLoader
+                                    .setOnThumbnailLoadedListener(new YouTubeThumbnailLoader.OnThumbnailLoadedListener() {
+                                        @Override
+                                        public void onThumbnailLoaded(YouTubeThumbnailView youTubeThumbnailView, String s) {
+                                            youTubeThumbnailLoader.release();
 
-        holder.videoThumbnailListLayoutBinding
-                .youtubeThumbnailView
-                .initialize(YOUTUBE_API_KEY, new YouTubeThumbnailView.OnInitializedListener() {
-            @Override
-            public void onInitializationSuccess(YouTubeThumbnailView youTubeThumbnailView, final YouTubeThumbnailLoader youTubeThumbnailLoader) {
-                //setting trailer video key
-                youTubeThumbnailLoader.setVideo(trailerVideo.getKey());
+                                        }
 
-                //getting trailer thumbnail
-                youTubeThumbnailLoader
-                        .setOnThumbnailLoadedListener(new YouTubeThumbnailLoader.OnThumbnailLoadedListener() {
-                    @Override
-                    public void onThumbnailLoaded(YouTubeThumbnailView youTubeThumbnailView, String s) {
-                        youTubeThumbnailLoader.release();
-                    }
+                                        @Override
+                                        public void onThumbnailError(YouTubeThumbnailView youTubeThumbnailView, YouTubeThumbnailLoader.ErrorReason errorReason) {
+                                            youTubeThumbnailLoader.release();
 
-                    @Override
-                    public void onThumbnailError(YouTubeThumbnailView youTubeThumbnailView, YouTubeThumbnailLoader.ErrorReason errorReason) { }
-                });
-            }
+                                        }
+                                    });
+                            holder.readyForLoadingYoutubeThumbnail = true;
 
-            @Override
-            public void onInitializationFailure(YouTubeThumbnailView youTubeThumbnailView, YouTubeInitializationResult youTubeInitializationResult) { }
-        });
+                        }
 
+                        @Override
+                        public void onInitializationFailure(YouTubeThumbnailView youTubeThumbnailView, YouTubeInitializationResult youTubeInitializationResult) {
+                            holder.readyForLoadingYoutubeThumbnail = true;
+                        }
+                    });
+        }
 
         holder.videoThumbnailListLayoutBinding.getRoot().setOnClickListener(new View.OnClickListener() {
             @Override
@@ -105,9 +110,16 @@ public class VideosTrailersListAdapter extends RecyclerView.Adapter<VideosTraile
     public class ViewHolder extends RecyclerView.ViewHolder
     {
         VideoThumbnailListLayoutBinding videoThumbnailListLayoutBinding;
-        public ViewHolder(@NonNull VideoThumbnailListLayoutBinding videoThumbnailListLayoutBinding) {
+        boolean readyForLoadingYoutubeThumbnail;
+
+        public ViewHolder(@NonNull VideoThumbnailListLayoutBinding videoThumbnailListLayoutBinding, boolean readyForLoadingYoutubeThumbnail) {
             super(videoThumbnailListLayoutBinding.getRoot());
             this.videoThumbnailListLayoutBinding=videoThumbnailListLayoutBinding;
+
+           /* boolean value to prevent twice initialization of key,because twice initialization of key
+            leads to crash*/
+
+            this.readyForLoadingYoutubeThumbnail = readyForLoadingYoutubeThumbnail;
         }
     }
 }
